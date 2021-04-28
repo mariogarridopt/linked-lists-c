@@ -57,6 +57,7 @@ void ioSearchById(Ptr_No *list);
 void ioSearchByLotNumber(Ptr_No *list);
 void ioAvailableStockByFarmacyName(Ptr_No *list);
 void ioAvailableStockByDate(Ptr_No *list);
+void ioAvailableStockNextSixMonths(Ptr_No *list);
 void ioImportFile(Ptr_No *list);
 
 int main()
@@ -77,8 +78,8 @@ int main()
         printf("\n [ 08 ] Pesquisar por Nº de Lote");
         printf("\n [ 09 ] Pesquisar vacinas disponiveis de farmaceutica");
         printf("\n [ 10 ] Pesquisar vacinas disponiveis ate a uma data");
-        printf("\n [ 11 ] *Ver stock mensal da vacinas");
-        printf("\n [ 12 ] *Importar dados de ficheiro csv");
+        printf("\n [ 11 ] Ver stock mensal da vacinas");
+        printf("\n [ 12 ] Importar dados de ficheiro csv");
         printf("\n [ 00 ] Sair do programa");
         printf("\n\n >>>> Escolher uma opcao (0,1,2,3,..): ");
         scanf("%hd", &op);
@@ -125,6 +126,8 @@ int main()
                 ioAvailableStockByDate(&list);
                 break;
             case 11:
+                printf("\n <<< Vacinas disponiveis nos proximos 6 meses >>>\n");
+                ioAvailableStockNextSixMonths(&list);
                 break;
             case 12:
                 printf("\n <<< Importar lista de ficheiro >>>");
@@ -616,63 +619,40 @@ void ioAvailableStockByDate(Ptr_No *list) {
     }
 }
 
-const char* getfield(char* line, int num)
-{
-    const char* tok;
-    for (tok = strtok(line, ";");
-         tok && *tok;
-         tok = strtok(NULL, ";\n"))
-    {
-        if (!--num)
-            return tok;
+void ioAvailableStockNextSixMonths(Ptr_No *list) {
+    Date searchDate;
+
+    time_t now;
+    time(&now);
+    struct tm *local = localtime(&now);
+    searchDate->Day = 1;
+    searchDate->Month = local->tm_mon + 1;
+    searchDate->Year = local->tm_year + 1900;
+
+    for (int i = 0; i < 6; ++i) {
+        Ptr_No currentNode = *list;
+        int total = 0;
+
+        while (currentNode != NULL) {
+            if(compare_dates(currentNode->Ptr_Elem->expirationDate, searchDate) <= 0) {
+                total += currentNode->Ptr_Elem->quantity;
+            }
+            currentNode = currentNode->Ptr_Seg;
+        }
+
+        printf("%d/%d: %d vacinas\n", searchDate->Month, searchDate->Year, total);
+
+        if(searchDate->Month < 12) {
+            searchDate->Month++;
+        } else {
+            searchDate->Month = 1;
+            searchDate->Year++;
+        }
     }
-    return NULL;
 }
 
 void importListFromFile(char filename[40], Ptr_No *list){
-    FILE* stream = fopen(filename, "r");
-
-    char line[1024];
-    while (fgets(line, 1024, stream))
-    {
-        char* tmp = strdup(line);
-
-        Ptr_No newNode;
-
-        // Alocate dynamic space to the new objects
-        if ((newNode =(Ptr_No) malloc (sizeof(struct Node))) == NULL ) return;
-
-        if ((newNode->Ptr_Elem=(StockItem) malloc (sizeof(struct Item))) == NULL ) {
-            free(newNode);
-            return;
-        }
-
-        if ((newNode->Ptr_Elem->expirationDate=(Date) malloc (sizeof(struct DDMMAAAA))) == NULL ) {
-            free(newNode->Ptr_Elem);
-            free(newNode);
-            return;
-        }
-
-        // Fill data
-        newNode->Ptr_Elem->id = atoi(getfield(tmp, 1));
-
-        if(searchById(list, newNode->Ptr_Elem->id) == NULL) {
-            //strncpy(newNode->Ptr_Elem->farmacyName, getfield(tmp, 2), sizeof(newNode->Ptr_Elem->farmacyName) );
-            newNode->Ptr_Elem->lotNumber = atoi(getfield(tmp, 3));
-            newNode->Ptr_Elem->recivedQtt = atoi(getfield(tmp, 4));
-            newNode->Ptr_Elem->quantity = atoi(getfield(tmp, 5));
-            newNode->Ptr_Elem->expirationDate->Day = atoi(getfield(tmp, 6));
-            newNode->Ptr_Elem->expirationDate->Month = atoi(getfield(tmp, 7));
-            newNode->Ptr_Elem->expirationDate->Year = atoi(getfield(tmp, 8));
-            newNode->Ptr_Elem->sales = NULL;
-            newNode->Ptr_Seg = NULL;
-
-
-            newNode->Ptr_Seg = *list;
-            *list = newNode;
-        }
-        free(tmp);
-    }
+    // TODO: open the "filename" and import data to list
 }
 
 void ioImportFile(Ptr_No *list) {
